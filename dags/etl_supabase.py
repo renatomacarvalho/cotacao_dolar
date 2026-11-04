@@ -1,7 +1,14 @@
 from datetime import datetime, timedelta
-import requests
-import psycopg  # Conector moderno (v3) que instalamos
+import os
+
+import psycopg
+from dotenv import load_dotenv
 from airflow.decorators import dag, task
+
+from cotacao_dolar.extraction.extracao import extrair_cotacao as buscar_cotacao
+
+load_dotenv()
+
 # ==============================================================================
 # PASSO 2: COLE AQUI AS SUAS CREDENCIAIS DO SUPABASE (Vem do painel Settings > Database)
 # ==============================================================================
@@ -32,7 +39,7 @@ default_args = {
     dag_id='pipeline_etl_cotacao',
     default_args=default_args,
     description='Pipeline ETL gravando dados no Supabase com Psycopg3',
-    schedule='05 08 * * *',
+    schedule='20 08,18 * * *',
     catchup=False,
     tags=['portfolio', 'postgres', 'supabase', 'etl']
 )
@@ -40,13 +47,17 @@ def pipeline_cambio_cloud():
 
     @task()
     def extrair_cotacao():
-        url = "https://economia.awesomeapi.com.br/json/last/USD-BRL"
-        response = requests.get(url, timeout=30)
-        response.raise_for_status()
-        dados = response.json()
-        valor_dolar = float(dados["USDBRL"]["bid"])
-        print(f"[EXTRACT] Cotação do dólar: R$ {valor_dolar:.4f}")
-        return valor_dolar    
+        return buscar_cotacao()    
+
+        # url = "https://economia.awesomeapi.com.br/json/last/USD-BRL"
+
+
+        # response = requests.get(url, timeout=30)
+        # response.raise_for_status()
+        # dados = response.json()
+        # valor_dolar = float(dados["USDBRL"]["bid"])
+        # print(f"[EXTRACT] Cotação do dólar: R$ {valor_dolar:.4f}")
+        # return valor_dolar    
 
     @task()
     def processar_dados(valor_dolar: float):
