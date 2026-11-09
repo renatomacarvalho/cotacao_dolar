@@ -5,7 +5,9 @@ import psycopg
 from dotenv import load_dotenv
 from airflow.decorators import dag, task
 
-from cotacao_dolar.extraction.extracao import extrair_cotacao as buscar_cotacao
+from cotacao_dolar.extraction.extraction import extrair_cotacao as get_cotacao
+from cotacao_dolar.loading.processing_dolar import processing_data as get_processing_dolar
+
 
 load_dotenv()
 
@@ -18,9 +20,9 @@ DB_USER = "postgres.lupssdmiwasyheolmkbr"
 DB_PORT = "5432"
 
 import os
-from dotenv import load_dotenv
 
-load_dotenv()
+
+
 
 
 DB_PASS = os.getenv("DB_PASS")
@@ -47,7 +49,7 @@ def pipeline_cambio_cloud():
 
     @task()
     def extrair_cotacao():
-        return buscar_cotacao()    
+        return get_cotacao()    
 
         # url = "https://economia.awesomeapi.com.br/json/last/USD-BRL"
 
@@ -60,13 +62,15 @@ def pipeline_cambio_cloud():
         # return valor_dolar    
 
     @task()
-    def processar_dados(valor_dolar: float):
-        status = "ALTO" if valor_dolar > 5.0 else "BAIXO"
-        return {
-            'data_consulta': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-            'valor': valor_dolar,
-            'status': status
-        }
+    def processing_data(valor_dolar: float):
+        return get_processing_dolar(valor_dolar)
+
+        #status = "ALTO" if valor_dolar > 5.0 else "BAIXO"
+        #return {
+        #    'data_consulta': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+        #    'valor': valor_dolar,
+        #    'status': status
+        #}
 
     @task()
     def carregar_dados_supabase(dados_processados: dict):
@@ -98,7 +102,7 @@ def pipeline_cambio_cloud():
 
     # Definindo a ordem de execução (Workflow)
     cotacao = extrair_cotacao()
-    dados_finais = processar_dados(cotacao)
+    dados_finais = processing_data(cotacao)
     carregar_dados_supabase(dados_finais)
 
 pipeline_cambio_cloud()
